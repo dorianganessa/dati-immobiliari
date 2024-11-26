@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-#RUN git clone https://github.com/dorianganessa/dati-immobiliari.git .
+RUN git clone https://github.com/dorianganessa/dati-immobiliari.git .
 
 RUN uv sync --frozen
 EXPOSE 8501
