@@ -3,6 +3,7 @@
 FROM python:3.11-slim-bookworm
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+ADD . /app
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
@@ -11,8 +12,6 @@ RUN apt-get update && apt-get install -y \
     software-properties-common \
     git \
     && rm -rf /var/lib/apt/lists/*
-
-RUN git clone https://github.com/dorianganessa/dati-immobiliari.git .
 
 RUN uv sync --frozen
 EXPOSE 8501
