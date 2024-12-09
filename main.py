@@ -22,7 +22,8 @@ def main():
         init_db(conn)
         
         st.set_page_config(layout="wide")
-        st.title("Dati immobiliari")
+        
+        st.title("Dati immobiliari Agenzia delle Entrate")
         st.caption("Dati del 2024")
 
         
@@ -39,15 +40,15 @@ def main():
         }
 
         regioni_dataset = get_regioni(conn)["Regione"]
-        selected_regione =st.sidebar.selectbox("Seleziona la regione", regioni_dataset)
+        selected_regione =st.selectbox("Seleziona la regione", regioni_dataset)
 
         if(selected_regione != None):
             comuni_dataset = get_comuni(conn, selected_regione)["Comune_descrizione"]
-            selected_comune = st.sidebar.selectbox("Seleziona il comune", comuni_dataset)
+            selected_comune = st.selectbox("Seleziona il comune", comuni_dataset)
 
             if(selected_comune != None):
 
-                selected_tipologia = st.sidebar.selectbox("Seleziona la tipologia", ("Abitazioni civili", "Uffici", "Negozi"))
+                selected_tipologia = st.selectbox("Seleziona la tipologia", ("Abitazioni civili", "Uffici", "Negozi"))
 
                 if(selected_tipologia != None):
                     result = conn.execute(f"SELECT * FROM joined_data WHERE Regione = '{selected_regione}' and Comune_descrizione = '{selected_comune}' and Descr_Tipologia = '{selected_tipologia}'").df()
