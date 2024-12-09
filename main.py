@@ -2,7 +2,7 @@
 
 import duckdb
 import streamlit as st
-from init_db import create_tables
+from init_db import init_db
 
 @st.cache_data(hash_funcs={duckdb.DuckDBPyConnection: id})
 def get_regioni(conn):
@@ -19,7 +19,7 @@ def main():
     """
     try:
         conn = duckdb.connect(database = "dati-immobiliari.duckdb")
-        create_tables(conn)
+        init_db(conn)
         
         st.set_page_config(layout="wide")
         st.title("Dati immobiliari")
