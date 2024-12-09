@@ -26,6 +26,17 @@ def main():
         st.caption("Dati del 2024")
 
         
+        show_all_columns = st.checkbox("Mostra tutte le colonne", value=False)
+
+        default_columns = {
+            "Comune_descrizione" : "Comune",
+            "Descr_Tipologia" : "Tipologia",
+            "Zona_Descr" : "Zona",
+            "Compr_min" : "Prezzo acquisto minimo al mq (€)",
+            "Compr_max" : "Prezzo acquisto massimo al mq (€)",
+            "Loc_min" : "Prezzo locazione minimo al mq (€)",
+            "Loc_max" : "Prezzo locazione massimo al mq (€)"
+        }
 
         regioni_dataset = get_regioni(conn)["Regione"]
         selected_regione =st.sidebar.selectbox("Seleziona la regione", regioni_dataset)
@@ -40,8 +51,15 @@ def main():
 
                 if(selected_tipologia != None):
                     result = conn.execute(f"SELECT * FROM joined_data WHERE Regione = '{selected_regione}' and Comune_descrizione = '{selected_comune}' and Descr_Tipologia = '{selected_tipologia}'").df()
-                    st.table(result)
-          
+                    readable_columns = {**default_columns, **{col: col for col in result.columns if col not in default_columns}}
+
+                    if(show_all_columns):
+                        st.dataframe(result)
+                        
+                    else:
+                        
+                        display_df = result[list(default_columns.keys())].rename(columns=default_columns)
+                        st.dataframe(display_df)
                     
     except Exception as e:
         print(f"An error occurred: {e}")
