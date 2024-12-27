@@ -2,68 +2,109 @@
 
 import duckdb
 import streamlit as st
+import geopandas as gpd
+import folium
+import streamlit_folium as st_folium
+import os
+
+# Set page configuration as the first Streamlit command
+st.set_page_config(layout="wide", page_title="Interactive Real Estate Map", page_icon="🌍")
+
 from init_db import init_db
+from maptab import map_tab
+
+
 
 @st.cache_data(hash_funcs={duckdb.DuckDBPyConnection: id})
-def get_regioni(conn):
-    return conn.execute("SELECT DISTINCT Regione FROM luoghi order by Regione").df()
+def get_regions(conn):
+    return conn.execute("SELECT DISTINCT Regione FROM luoghi ORDER BY Regione").df()
 
 @st.cache_data(hash_funcs={duckdb.DuckDBPyConnection: id})
-def get_comuni(conn, regione):
-    return conn.execute(f"SELECT DISTINCT Comune_descrizione FROM luoghi WHERE Regione = '{regione}' order by Comune_descrizione").df()
+def get_municipalities(conn, region):
+    return conn.execute(f"SELECT DISTINCT Comune_descrizione FROM luoghi WHERE Regione = '{region}' ORDER BY Comune_descrizione").df()
 
+@st.cache_data
+def load_geodataframe(file_path):
+    return gpd.read_file(file_path)
+
+def create_map(data_gdf, highlight_column):
+    m = folium.Map(location=[42.5, 12.5], zoom_start=6, tiles="cartodbpositron")
+
+    for _, row in data_gdf.iterrows():
+        feature = folium.GeoJson(
+            row["geometry"],
+            name=row[highlight_column],
+            tooltip=row[highlight_column],
+            style_function=lambda x: {
+                "fillColor": "blue",
+                "color": "black",
+                "weight": 1,
+                "fillOpacity": 0.4,
+            },
+            highlight_function=lambda x: {"weight": 3, "fillOpacity": 0.7},
+            popup=folium.Popup(f"<b>{row[highlight_column]}</b>", parse_html=True)
+        )
+        feature.add_to(m)
+
+    return m
 
 def main():
     """
     Main function that serves as the entry point for the application.
     """
     try:
-        conn = duckdb.connect(database = "dati-immobiliari.duckdb")
+        conn = duckdb.connect(database="dati-immobiliari.duckdb")
         init_db(conn)
-        
-        st.set_page_config(layout="wide")
-        
-        st.title("Dati immobiliari Agenzia delle Entrate")
-        st.caption("Dati del 2024")
 
-        
-        show_all_columns = st.checkbox("Mostra tutte le colonne", value=False)
+        tableTab, mapTab  = st.tabs(["Table", "Map"])
 
-        default_columns = {
-            "Comune_descrizione" : "Comune",
-            "Descr_Tipologia" : "Tipologia",
-            "Zona_Descr" : "Zona",
-            "Compr_min" : "Prezzo acquisto minimo al mq (€)",
-            "Compr_max" : "Prezzo acquisto massimo al mq (€)",
-            "Loc_min" : "Prezzo locazione minimo al mq (€)",
-            "Loc_max" : "Prezzo locazione massimo al mq (€)"
-        }
+        with tableTab:
+            st.title("Italian Real Estate Prices")
+            st.caption("Downloaded from Agenzia delle Entrate - current data is from 1st semester 2024")
 
-        regioni_dataset = get_regioni(conn)["Regione"]
-        selected_regione =st.selectbox("Seleziona la regione", regioni_dataset)
+            show_all_columns = st.checkbox("Show all columns", value=False)
 
-        if(selected_regione != None):
-            comuni_dataset = get_comuni(conn, selected_regione)["Comune_descrizione"]
-            selected_comune = st.selectbox("Seleziona il comune", comuni_dataset)
+            default_columns = {
+                "Comune_descrizione": "Municipality",
+                "Descr_Tipologia": "Type",
+                "Zona_Descr": "Zones",
+                "Compr_min": "Minimum purchase price per sqm (€)",
+                "Compr_max": "Maximum purchase price per sqm (€)",
+                "Loc_min": "Minimum rental price per sqm (€)",
+                "Loc_max": "Maximum rental price per sqm (€)"
+            }
 
-            if(selected_comune != None):
+            regions_dataset = get_regions(conn)["Regione"]
+            selected_region = st.selectbox("Select a region", regions_dataset)
 
-                selected_tipologia = st.selectbox("Seleziona la tipologia", ("Abitazioni civili", "Uffici", "Negozi"))
+            if selected_region is not None:
+                municipalities_dataset = get_municipalities(conn, selected_region)["Comune_descrizione"]
+                selected_municipality = st.selectbox("Select a municipality", municipalities_dataset)
 
-                if(selected_tipologia != None):
-                    result = conn.execute(f"SELECT * FROM joined_data WHERE Regione = '{selected_regione}' and Comune_descrizione = '{selected_comune}' and Descr_Tipologia = '{selected_tipologia}'").df()
-                    readable_columns = {**default_columns, **{col: col for col in result.columns if col not in default_columns}}
+                if selected_municipality is not None:
+                    selected_building_type = st.selectbox("Select the type of building", ("Residential buildings", "Offices", "Shops"))
 
-                    if(show_all_columns):
-                        st.dataframe(result)
-                        
-                    else:
-                        
-                        display_df = result[list(default_columns.keys())].rename(columns=default_columns)
-                        st.dataframe(display_df)
-                    
+                    building_types = {
+                        "Residential buildings": "Abitazioni civili",
+                        "Offices": "Uffici",
+                        "Shops": "Negozi"
+                    }
+
+                    if selected_building_type is not None:
+                        result = conn.execute(f"SELECT * FROM joined_data WHERE Regione = '{selected_region}' and Comune_descrizione = '{selected_municipality}' and Descr_Tipologia = '{building_types[selected_building_type]}'").df()
+                        readable_columns = {**default_columns, **{col: col for col in result.columns if col not in default_columns}}
+
+                        if show_all_columns:
+                            st.dataframe(result)
+                        else:
+                            display_df = result[list(default_columns.keys())].rename(columns=default_columns)
+                            st.dataframe(display_df)
+
+        with mapTab:
+            pass
+
     except Exception as e:
-        print(f"An error occurred: {e}")
+        st.error(f"An error occurred: {e}")
         return 1
 
     return 0
