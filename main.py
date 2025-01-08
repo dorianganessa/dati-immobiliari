@@ -6,7 +6,7 @@ import geopandas as gpd
 import folium
 import streamlit_folium as st_folium
 import os
-
+import streamlit_analytics
 # Set page configuration as the first Streamlit command
 st.set_page_config(layout="wide", page_title="Interactive Real Estate Map", page_icon="🌍")
 
@@ -56,6 +56,8 @@ def main():
         conn = duckdb.connect(database="dati-immobiliari.duckdb")
         init_db(conn)
 
+        streamlit_analytics.start_tracking()
+
         tableTab, mapTab  = st.tabs(["Table", "Map"])
 
         with tableTab:
@@ -102,6 +104,8 @@ def main():
 
         with mapTab:
             pass
+
+        streamlit_analytics.stop_tracking()
 
     except Exception as e:
         st.error(f"An error occurred: {e}")

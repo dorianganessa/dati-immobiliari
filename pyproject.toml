@@ -9,4 +9,5 @@ dependencies = [
     "streamlit-folium>=0.23.2",
     "streamlit>=1.40.2",
     "geopandas>=1.0.1",
+    "streamlit-analytics>=0.4.1",
 ]
